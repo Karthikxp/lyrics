@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Action, ActionPanel, Detail, List, showToast, Toast } from "@raycast/api";
 import axios from "axios";
 import * as cheerio from "cheerio";
+import SpotifyWebApi from "spotify-web-api-node";
 
 // Import genius-lyrics with fallback
 let GeniusClient: any;
@@ -12,6 +13,174 @@ try {
   console.error("Failed to import genius-lyrics:", error);
 }
 
+// Spotify API configuration
+const spotifyApi = new SpotifyWebApi({
+  clientId: '1ccb4f5713f8424986d613b49e337a73',
+  clientSecret: 'e941a3e941aa4e4d98b686c72e9d223e'
+});
+
+let spotifyTokenExpiry = 0;
+
+// Spotify authentication function
+async function authenticateSpotify(): Promise<boolean> {
+  try {
+    if (Date.now() < spotifyTokenExpiry) {
+      return true; // Token still valid
+    }
+
+    const response = await spotifyApi.clientCredentialsGrant();
+    spotifyApi.setAccessToken(response.body.access_token);
+    spotifyTokenExpiry = Date.now() + (response.body.expires_in * 1000) - 60000; // Refresh 1 min early
+    console.log('✅ Spotify authenticated successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Spotify authentication failed:', error);
+    return false;
+  }
+}
+
+// Spotify search functions
+async function searchSpotifyTracks(query: string, limit: number = 20): Promise<Song[]> {
+  try {
+    const authenticated = await authenticateSpotify();
+    if (!authenticated) return [];
+
+    const searchResults = await spotifyApi.searchTracks(query, { limit, market: 'IN' });
+    const tracks = searchResults.body.tracks?.items || [];
+
+    return tracks.map((track) => ({
+      id: track.id,
+      title: track.name,
+      artist: {
+        name: track.artists[0]?.name || 'Unknown Artist',
+      },
+      album: track.album ? { name: track.album.name } : undefined,
+      url: track.external_urls.spotify,
+      thumbnail: track.album?.images[0]?.url || "🎵",
+      fullSong: track,
+    }));
+  } catch (error) {
+    console.error('Spotify track search error:', error);
+    return [];
+  }
+}
+
+async function searchSpotifyArtists(query: string, limit: number = 10): Promise<Artist[]> {
+  try {
+    const authenticated = await authenticateSpotify();
+    if (!authenticated) return [];
+
+    const searchResults = await spotifyApi.searchArtists(query, { limit, market: 'IN' });
+    const artists = searchResults.body.artists?.items || [];
+
+    return artists.map((artist) => ({
+      id: artist.id,
+      name: artist.name,
+      url: artist.external_urls.spotify,
+      thumbnail: artist.images[0]?.url || "👨‍🎤",
+      followers: artist.followers?.total,
+      genres: artist.genres,
+      popularity: artist.popularity,
+      fullArtist: artist,
+    }));
+  } catch (error) {
+    console.error('Spotify artist search error:', error);
+    return [];
+  }
+}
+
+async function getSpotifyArtistTopTracks(artistId: string): Promise<Song[]> {
+  try {
+    const authenticated = await authenticateSpotify();
+    if (!authenticated) return [];
+
+    // Get top tracks (limited to 10 by Spotify)
+    const topTracks = await spotifyApi.getArtistTopTracks(artistId, 'IN');
+    const tracks = topTracks.body.tracks || [];
+
+    return tracks.map((track) => ({
+      id: track.id,
+      title: track.name,
+      artist: {
+        name: track.artists[0]?.name || 'Unknown Artist',
+      },
+      album: track.album ? { name: track.album.name } : undefined,
+      url: track.external_urls.spotify,
+      thumbnail: track.album?.images[0]?.url || "🎵",
+      fullSong: track,
+    }));
+  } catch (error) {
+    console.error('Spotify artist top tracks error:', error);
+    return [];
+  }
+}
+
+async function getSpotifyArtistAlbums(artistId: string): Promise<Song[]> {
+  try {
+    const authenticated = await authenticateSpotify();
+    if (!authenticated) return [];
+
+    const songs: Song[] = [];
+    const seenTrackIds = new Set<string>();
+    
+    // Get all albums for the artist (up to 50 albums, each with up to 50 tracks)
+    const albumsResponse = await spotifyApi.getArtistAlbums(artistId, {
+      include_groups: 'album,single',
+      market: 'IN',
+      limit: 50
+    });
+    
+    const albums = albumsResponse.body.items || [];
+    console.log(`📀 Found ${albums.length} albums for artist`);
+    
+    // Get tracks from each album
+    for (const album of albums.slice(0, 10)) { // Limit to first 10 albums to avoid rate limits
+      try {
+        const tracksResponse = await spotifyApi.getAlbumTracks(album.id, {
+          market: 'IN',
+          limit: 50
+        });
+        
+        const tracks = tracksResponse.body.items || [];
+        
+        for (const track of tracks) {
+          // Skip duplicates by track ID
+          if (seenTrackIds.has(track.id)) {
+            continue;
+          }
+          
+          seenTrackIds.add(track.id);
+          songs.push({
+            id: track.id,
+            title: track.name,
+            artist: {
+              name: track.artists[0]?.name || 'Unknown Artist',
+            },
+            album: { name: album.name },
+            url: track.external_urls.spotify,
+            thumbnail: album.images[0]?.url || "🎵",
+            fullSong: track,
+          });
+          
+          // Stop if we reach 100 songs
+          if (songs.length >= 100) {
+            console.log(`🎵 Collected 100 unique songs, stopping`);
+            return songs;
+          }
+        }
+      } catch (albumError) {
+        console.log(`Failed to get tracks for album ${album.name}:`, albumError);
+      }
+    }
+    
+    console.log(`🎵 Collected ${songs.length} unique songs total`);
+    return songs;
+  } catch (error) {
+    console.error('Spotify artist albums error:', error);
+    return [];
+  }
+}
+
 // Enhanced song interface with multiple sources
 interface LyricsSource {
   name: string;
@@ -20,11 +189,14 @@ interface LyricsSource {
 }
 
 interface Artist {
-  id: number;
+  id: string;
   name: string;
   url: string;
   thumbnail?: string;
   fullArtist?: any;
+  followers?: number;
+  genres?: string[];
+  popularity?: number;
 }
 
 interface Song {
@@ -71,87 +243,158 @@ export default function SearchLyrics() {
         let searchResults: Song[] = [];
 
         if (searchMode === "song") {
-          // Search for songs directly
-          const searches = await client.songs.search(searchText);
-          searchResults = searches.slice(0, 10).map((song: any) => ({
-            id: song.id,
-            title: song.title,
-            artist: {
-              name: song.artist.name,
-            },
-            album: song.album ? { name: song.album.name } : undefined,
-            url: song.url,
-            thumbnail: song.thumbnail,
-            fullSong: song,
-          }));
+          // Use Spotify for better song search results
+          console.log(`🎵 Searching Spotify for songs: "${searchText}"`);
+          const spotifyResults = await searchSpotifyTracks(searchText, 15);
+          
+          if (spotifyResults.length > 0) {
+            // Remove duplicates by song ID and title combination
+            const uniqueSongs = [];
+            const seenKeys = new Set();
+            
+            for (const song of spotifyResults) {
+              const uniqueKey = `${song.id}-${song.title.toLowerCase()}-${song.artist.name.toLowerCase()}`;
+              if (!seenKeys.has(uniqueKey)) {
+                seenKeys.add(uniqueKey);
+                uniqueSongs.push(song);
+              }
+            }
+            
+            searchResults = uniqueSongs;
+            console.log(`✅ Found ${searchResults.length} unique songs on Spotify`);
+          } else {
+            // Fallback to Genius if Spotify fails
+            console.log(`⚠️ Spotify search failed, trying Genius...`);
+            if (!GeniusClient) {
+              throw new Error("Both Spotify and Genius unavailable");
+            }
+            const client = new GeniusClient();
+            const searches = await client.songs.search(searchText);
+            searchResults = searches.slice(0, 10).map((song: any) => ({
+              id: song.id,
+              title: song.title,
+              artist: {
+                name: song.artist.name,
+              },
+              album: song.album ? { name: song.album.name } : undefined,
+              url: song.url,
+              thumbnail: song.thumbnail,
+              fullSong: song,
+            }));
+          }
         } else if (searchMode === "artist") {
           // If no artist is selected, search for artists
           if (!selectedArtist) {
-            const searches = await client.songs.search(searchText);
+            // Use Spotify for better artist search
+            console.log(`👨‍🎤 Searching Spotify for artists: "${searchText}"`);
+            const spotifyArtists = await searchSpotifyArtists(searchText, 10);
             
-            // Extract unique artists from search results
-            const artistMap = new Map<string, Artist>();
-            
-            searches.forEach((song: any) => {
-              const artistName = song.artist.name;
-              const artistId = song.artist.id;
-              
-              if (!artistMap.has(artistName)) {
-                artistMap.set(artistName, {
-                  id: artistId,
-                  name: artistName,
-                  url: song.artist.url || `https://genius.com/artists/${artistName.replace(/\s+/g, '-')}`,
-                  thumbnail: song.artist.image_url || song.thumbnail || "👨‍🎤",
-                  fullArtist: song.artist
-                });
+            if (spotifyArtists.length > 0) {
+              setArtists(spotifyArtists);
+              setSongs([]); // Clear songs when showing artists
+              console.log(`✅ Found ${spotifyArtists.length} artists on Spotify`);
+              return;
+            } else {
+              // Fallback to Genius if Spotify fails
+              console.log(`⚠️ Spotify artist search failed, trying Genius...`);
+              if (!GeniusClient) {
+                throw new Error("Both Spotify and Genius unavailable");
               }
-            });
-            
-            const uniqueArtists = Array.from(artistMap.values())
-              .slice(0, 10) // Show top 10 artists
-              .sort((a, b) => a.name.localeCompare(b.name));
-            
-            setArtists(uniqueArtists);
-            setSongs([]); // Clear songs when showing artists
-            return;
-          } else {
-            // Artist is selected, fetch their songs
-            try {
-              // Search for songs by the selected artist
-              const artistSongs = await selectedArtist.fullArtist.songs({ 
-                sort: "popularity", 
-                per_page: 20 
+              const client = new GeniusClient();
+              const searches = await client.songs.search(searchText);
+              
+              // Extract unique artists from search results
+              const artistMap = new Map<string, Artist>();
+              
+              searches.forEach((song: any) => {
+                const artistName = song.artist.name;
+                const artistId = song.artist.id;
+                
+                if (!artistMap.has(artistName)) {
+                  artistMap.set(artistName, {
+                    id: artistId.toString(),
+                    name: artistName,
+                    url: song.artist.url || `https://genius.com/artists/${artistName.replace(/\s+/g, '-')}`,
+                    thumbnail: song.artist.image_url || song.thumbnail || "👨‍🎤",
+                    fullArtist: song.artist
+                  });
+                }
               });
               
-              searchResults = artistSongs.map((song: any) => ({
-                id: song.id,
-                title: song.title,
-                artist: {
-                  name: song.artist.name,
-                },
-                album: song.album ? { name: song.album.name } : undefined,
-                url: song.url,
-                thumbnail: song.thumbnail,
-                fullSong: song,
-              }));
-            } catch (artistError) {
-              // Fallback: search for songs by artist name
-              const searches = await client.songs.search(selectedArtist.name);
-              const artistSongs = searches.filter((song: any) => 
-                song.artist.name.toLowerCase() === selectedArtist.name.toLowerCase()
-              );
+              const uniqueArtists = Array.from(artistMap.values())
+                .slice(0, 10) // Show top 10 artists
+                .sort((a, b) => a.name.localeCompare(b.name));
               
-              searchResults = artistSongs.slice(0, 20).map((song: any) => ({
-                id: song.id,
-                title: song.title,
-                artist: {
-                  name: song.artist.name,
-                },
-                album: song.album ? { name: song.album.name } : undefined,
-                url: song.url,
-                thumbnail: song.thumbnail,
-                fullSong: song,
-              }));
+              setArtists(uniqueArtists);
+              setSongs([]); // Clear songs when showing artists
+              return;
+            }
+          } else {
+            // Artist is selected, fetch their songs
+            console.log(`🎵 Getting top tracks for: ${selectedArtist.name}`);
+            
+            // Try Spotify first for artist's comprehensive catalog
+            if (selectedArtist.fullArtist && selectedArtist.fullArtist.id) {
+              console.log(`🎵 Getting comprehensive catalog for: ${selectedArtist.name}`);
+              const spotifyAlbumTracks = await getSpotifyArtistAlbums(selectedArtist.id);
+              if (spotifyAlbumTracks.length > 0) {
+                searchResults = spotifyAlbumTracks;
+                console.log(`✅ Found ${spotifyAlbumTracks.length} tracks for ${selectedArtist.name} on Spotify`);
+              } else {
+                // Fallback to top tracks if album method fails
+                const spotifyTracks = await getSpotifyArtistTopTracks(selectedArtist.id);
+                if (spotifyTracks.length > 0) {
+                  searchResults = spotifyTracks;
+                  console.log(`✅ Found ${spotifyTracks.length} top tracks for ${selectedArtist.name} on Spotify (fallback)`);
+                }
+              }
+            }
+            
+            // Fallback to Genius if Spotify fails or no tracks found
+            if (searchResults.length === 0) {
+              console.log(`⚠️ Spotify tracks failed, trying Genius for ${selectedArtist.name}...`);
+              try {
+                if (selectedArtist.fullArtist && selectedArtist.fullArtist.songs) {
+                  // Use Genius artist API if available
+                  const artistSongs = await selectedArtist.fullArtist.songs({ 
+                    sort: "popularity", 
+                    per_page: 100 
+                  });
+                  
+                  searchResults = artistSongs.map((song: any) => ({
+                    id: song.id,
+                    title: song.title,
+                    artist: {
+                      name: song.artist.name,
+                    },
+                    album: song.album ? { name: song.album.name } : undefined,
+                    url: song.url,
+                    thumbnail: song.thumbnail,
+                    fullSong: song,
+                  }));
+                }
+              } catch (artistError) {
+                // Final fallback: search for songs by artist name
+                if (GeniusClient) {
+                  const client = new GeniusClient();
+                  const searches = await client.songs.search(selectedArtist.name);
+                  const artistSongs = searches.filter((song: any) => 
+                    song.artist.name.toLowerCase() === selectedArtist.name.toLowerCase()
+                  );
+                  
+                  searchResults = artistSongs.slice(0, 100).map((song: any) => ({
+                    id: song.id,
+                    title: song.title,
+                    artist: {
+                      name: song.artist.name,
+                    },
+                    album: song.album ? { name: song.album.name } : undefined,
+                    url: song.url,
+                    thumbnail: song.thumbnail,
+                    fullSong: song,
+                  }));
+                }
+              }
             }
           }
         } else {
@@ -267,12 +510,26 @@ export default function SearchLyrics() {
         }),
 
     // Show artists when in artist mode and no artist is selected
-    ...(searchMode === "artist" && !selectedArtist ? artists.map((artist) =>
-      React.createElement(List.Item, {
-        key: artist.id,
+    ...(searchMode === "artist" && !selectedArtist ? artists.map((artist) => {
+      const subtitle = [];
+      if (artist.followers) {
+        subtitle.push(`${(artist.followers / 1000000).toFixed(1)}M followers`);
+      }
+      if (artist.genres && artist.genres.length > 0) {
+        subtitle.push(artist.genres.slice(0, 2).join(", "));
+      }
+      if (artist.popularity) {
+        subtitle.push(`${artist.popularity}% popularity`);
+      }
+      
+      return React.createElement(List.Item, {
+        key: `artist-${artist.id}-${artist.name}`,
         title: artist.name,
-        subtitle: "Artist",
+        subtitle: subtitle.length > 0 ? subtitle.join(" • ") : "Artist",
         icon: artist.thumbnail || "👨‍🎤",
+        accessories: [
+          ...(artist.followers ? [{ text: `${(artist.followers / 1000000).toFixed(1)}M` }] : [])
+        ],
         actions: React.createElement(
           ActionPanel,
           {},
@@ -284,7 +541,7 @@ export default function SearchLyrics() {
             },
           }),
           React.createElement(Action.OpenInBrowser, {
-            title: "Open Artist Page",
+            title: artist.url.includes('spotify') ? "Open on Spotify" : "Open Artist Page",
             url: artist.url,
             shortcut: { modifiers: ["cmd"], key: "o" },
           }),
@@ -294,19 +551,26 @@ export default function SearchLyrics() {
             shortcut: { modifiers: ["cmd"], key: "c" },
           })
         ),
-      })
-    ) : []),
+      });
+    }) : []),
 
     // Show songs (either from song search, artist's songs, or regional search)
-    ...songs.map((song) =>
-      React.createElement(List.Item, {
-        key: song.id,
-        title: song.title,
+    ...songs.map((song) => {
+      const isSpotifySource = song.url && song.url.includes('spotify');
+      const accessories = [];
+      
+      if (song.album?.name) {
+        accessories.push({ text: song.album.name });
+      }
+      if (selectedArtist) {
+        accessories.push({ text: `${songs.indexOf(song) + 1}/${songs.length}` });
+      }
+      
+             return React.createElement(List.Item, {
+         key: `song-${song.id}-${song.title}`,
+         title: song.title,
         subtitle: song.artist.name,
-        accessories: [
-          ...(song.album?.name ? [{ text: song.album.name }] : []),
-          ...(selectedArtist ? [{ text: `${songs.indexOf(song) + 1}/${songs.length}` }] : [])
-        ],
+        accessories: accessories,
         icon: song.thumbnail || "🎵",
         actions: React.createElement(
           ActionPanel,
@@ -324,18 +588,18 @@ export default function SearchLyrics() {
             shortcut: { modifiers: ["cmd"], key: "b" },
           })] : []),
           React.createElement(Action.OpenInBrowser, {
-            title: "Open on Genius",
+            title: isSpotifySource ? "Open on Spotify" : "Open on Genius",
             url: song.url,
             shortcut: { modifiers: ["cmd"], key: "o" },
           }),
           React.createElement(Action.CopyToClipboard, {
             title: "Copy Song Info",
-            content: `${song.title} by ${song.artist.name}`,
+            content: `${song.title} by ${song.artist.name}${song.album?.name ? ` (${song.album.name})` : ''}`,
             shortcut: { modifiers: ["cmd"], key: "c" },
           })
         ),
-      })
-    )
+      });
+    })
   );
 }
 
@@ -769,16 +1033,46 @@ function LyricsView({ song, onBack }: { song: Song; onBack: () => void }) {
         }
 
         // Try Genius for regular songs (if no regional lyrics found)
-        if (!lyricsFound && song.fullSong) {
+        if (!lyricsFound) {
           try {
-            const lyricsText = await song.fullSong.lyrics();
-            if (lyricsText && lyricsText.trim() !== "") {
-              setLyrics(lyricsText);
-              lyricsFound = true;
-              console.log("✅ Using Genius lyrics");
+            // If we have a Genius song object, use it directly
+            if (song.fullSong && song.fullSong.lyrics) {
+              const lyricsText = await song.fullSong.lyrics();
+              if (lyricsText && lyricsText.trim() !== "") {
+                setLyrics(lyricsText);
+                lyricsFound = true;
+                console.log("✅ Using Genius lyrics from fullSong object");
+              }
+            } else {
+              // For Spotify songs or when Genius object is not available, search Genius by title/artist
+              console.log(`🔍 Searching Genius for: "${song.title}" by "${song.artist.name}"`);
+              if (GeniusClient) {
+                const client = new GeniusClient();
+                const searchResults = await client.songs.search(`${song.title} ${song.artist.name}`);
+                
+                if (searchResults && searchResults.length > 0) {
+                  // Find the best match (exact title match preferred)
+                  let bestMatch = searchResults[0];
+                  for (const result of searchResults) {
+                    if (result.title.toLowerCase() === song.title.toLowerCase() && 
+                        result.artist.name.toLowerCase() === song.artist.name.toLowerCase()) {
+                      bestMatch = result;
+                      break;
+                    }
+                  }
+                  
+                  console.log(`🎯 Found match: "${bestMatch.title}" by "${bestMatch.artist.name}"`);
+                  const lyricsText = await bestMatch.lyrics();
+                  if (lyricsText && lyricsText.trim() !== "") {
+                    setLyrics(lyricsText);
+                    lyricsFound = true;
+                    console.log("✅ Using Genius lyrics from search");
+                  }
+                }
+              }
             }
           } catch (geniusError) {
-            console.log("Genius lyrics not available, trying alternatives...");
+            console.log("Genius lyrics not available, trying alternatives...", geniusError);
           }
         }
 

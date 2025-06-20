@@ -18,7 +18,8 @@
     "@raycast/api": "^1.83.2",
     "genius-lyrics": "^4.4.7",
     "axios": "^1.6.0",
-    "cheerio": "^1.0.0-rc.12"
+    "cheerio": "^1.0.0-rc.12",
+    "spotify-web-api-node": "^5.0.2"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.11",
