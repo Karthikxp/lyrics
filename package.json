@@ -3,9 +3,10 @@
   "title": "Lyrics Finder",
   "description": "Find and display song lyrics in Raycast",
   "icon": "icon.png",
-  "author": "user",
-  "categories": ["Music", "Productivity"],
+  "author": "karthik_manikandan",
   "license": "MIT",
+  "categories": ["Media", "Productivity"],
+
   "commands": [
     {
       "name": "search-lyrics",

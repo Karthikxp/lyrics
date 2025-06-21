@@ -1,19 +1,17 @@
 # Lyrics Finder - Raycast Extension
 
-A powerful Raycast extension that allows you to search for and display song lyrics from multiple sources including Spotify, Genius, and regional platforms. Enhanced with comprehensive search capabilities, multi-language support, and intelligent source prioritization.
+A powerful Raycast extension that allows you to search for and display song lyrics from multiple sources including Spotify and Genius. Enhanced with comprehensive search capabilities and intelligent source prioritization.
 
 ## 🚀 Key Features
 
 ### **Multi-Source Search**
 - 🎵 **Spotify Integration** - Primary search with comprehensive catalog access
 - 🧠 **Genius API** - Fallback for lyrics and detailed song information  
-- 🌏 **Regional Sources** - Specialized Tamil lyrics scraping from multiple sites
 - 🔄 **Alternative Sources** - Automatic fallback when primary sources fail
 
 ### **Advanced Search Modes**
 - 🎶 **Song Search** - Find specific tracks with autocomplete suggestions
-- 👨‍🎤 **Artist Search** - Browse complete discographies (albums + singles)
-- 🌍 **Regional Search** - Specialized search for Tamil and other regional lyrics
+- 👨‍🎤 **Artist Search** - Browse artist catalogs with smart prioritization
 
 ### **Intelligent Features**
 - 🔍 **Smart autocomplete** - Real-time suggestions as you type
@@ -24,10 +22,10 @@ A powerful Raycast extension that allows you to search for and display song lyri
 
 ### **User Experience**
 - 📖 **Beautiful lyrics display** - Clean, readable formatting with line breaks
-- 🔗 **Multiple actions** - Open on platforms, copy lyrics/info, search alternatives
+- 🔗 **Multiple actions** - Open on platforms, copy lyrics/info
 - 📋 **Advanced copy options** - Copy lyrics, song info, or search queries
-- 🎛️ **Mode switching** - Easy toggle between song, artist, and regional modes
-- 🌐 **Platform linking** - Direct links to Spotify, Genius, and regional sites
+- 🎛️ **Mode switching** - Easy toggle between song and artist modes
+- 🌐 **Platform linking** - Direct links to Spotify and Genius
 
 ## 📱 Usage Guide
 
@@ -39,24 +37,16 @@ A powerful Raycast extension that allows you to search for and display song lyri
 3. Select a song to view full lyrics with multiple source options
 4. Use "Back to Search" to return to results
 
-### **Artist Mode**
+### **Artist Mode (Enhanced)**
 1. Switch to Artist mode in the dropdown
 2. Search for an artist name
-3. Select an artist to see their complete catalog
-   - Top tracks, albums, and singles
-   - Comprehensive discography from Spotify
-   - Up to 100+ songs per artist
-4. Select any song to view lyrics
-
-### **Regional Mode (Tamil Lyrics)**
-1. Switch to Regional mode for specialized Tamil content
-2. Search using English or Tamil terms
-3. Get results from multiple Tamil lyrics sources:
-   - Tamil2Lyrics.com
-   - TamilPaa.com  
-   - LyricsTamil.com
-   - Alternative scrapers
-4. Automatic query variations and movie-based searches
+3. Select an artist to see their catalog organized by:
+   - **🔥 Top Tracks First** - Most popular songs (up to 10 tracks)
+   - **🆕 New Releases Next** - Recent albums and singles (newest first)
+   - **Smart Deduplication** - No repeated songs across categories
+   - **Rich Metadata** - Album art, release dates, track counts
+4. Visual indicators show whether each song is a top track or new release
+5. Select any song to view lyrics
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -70,7 +60,6 @@ A powerful Raycast extension that allows you to search for and display song lyri
 - `⌘ + O` - Open song on Genius/original source
 - `⌘ + C` - Copy full lyrics to clipboard
 - `⌘ + ⇧ + C` - Copy song info (title and artist)
-- `⌘ + ⇧ + S` - Search online for alternatives (Tamil mode)
 
 ## 🎯 Search Tips & Best Practices
 
@@ -78,19 +67,19 @@ A powerful Raycast extension that allows you to search for and display song lyri
 - Include artist name for more accurate matches
 - Use primary keywords from song titles
 - Try alternative spellings if needed
-- Regional songs: include movie name for Tamil content
+- Check your spelling for best results
 
 ### **For Artist Discovery:**
-- Artist mode provides complete discographies
-- Results include albums, singles, and collaborations
-- Sorted by popularity and release chronology
-- Duplicate removal ensures clean browsing
+- **Top Tracks** appear first for instant access to popular songs
+- **New Releases** follow, sorted by release date (newest first)
+- Complete discography browsing with up to 50+ tracks per artist
+- Album covers and metadata provide rich context
+- Smart duplicate removal ensures clean browsing experience
 
-### **For Regional Content:**
-- Tamil mode supports movie-based searches
-- Multiple spelling variations automatically tried
-- Includes transliteration and native script options
-- Provides search suggestions and manual fallbacks
+### **Visual Indicators:**
+- 🔥 **Top Track** - Popular songs with high play counts
+- 🆕 **New Release** - Recent albums and singles
+- Album names and track positions for easy navigation
 
 ## 🛠️ Installation & Setup
 
@@ -125,14 +114,13 @@ A powerful Raycast extension that allows you to search for and display song lyri
 ### **Data Sources**
 - **Spotify Web API** - Primary music catalog and metadata
 - **Genius API** - Lyrics content and song information
-- **Regional Scrapers** - Tamil lyrics from multiple websites
-- **Alternative APIs** - Fallback sources for comprehensive coverage
+- **Alternative Sources** - Fallback options for comprehensive coverage
 
 ### **Search Intelligence**
 - Query preprocessing and variation generation
 - Duplicate detection across sources
 - Result relevance scoring and ranking
-- Automatic language and region detection
+- Automatic source selection
 
 ### **Performance Features**
 - OAuth token caching with automatic refresh
@@ -140,14 +128,20 @@ A powerful Raycast extension that allows you to search for and display song lyri
 - Parallel source querying where possible
 - Result caching to minimize API calls
 
+### **Artist Catalog Organization**
+- **Top Tracks Priority** - Spotify's most popular tracks loaded first
+- **Release Date Sorting** - Recent albums and singles ordered by date
+- **Smart Limit Management** - Up to 50 total tracks for optimal performance
+- **Duplicate Prevention** - Cross-reference top tracks with new releases
+
 ## 📦 Dependencies
 
 ### **Core Dependencies**
 - `@raycast/api` - Raycast extension framework
 - `genius-lyrics` - Genius API integration
 - `spotify-web-api-node` - Spotify Web API client
-- `axios` - HTTP requests for custom scrapers
-- `cheerio` - HTML parsing for regional sources
+- `axios` - HTTP requests for custom sources
+- `cheerio` - HTML parsing capabilities
 
 ### **Development Tools**
 - `@raycast/eslint-config` - Code quality standards
@@ -156,24 +150,23 @@ A powerful Raycast extension that allows you to search for and display song lyri
 
 ## 🌟 Advanced Features
 
-### **Multi-Language Support**
-- Tamil lyrics with specialized scraping
-- English transliteration support
-- Movie-based search for regional content
-- Automatic language detection
-
 ### **Source Fallback Chain**
 1. **Spotify** (metadata + track info)
 2. **Genius** (lyrics + song details)  
-3. **Regional Sources** (Tamil websites)
-4. **Alternative Scrapers** (backup options)
-5. **Manual Search** (online fallback links)
+3. **Alternative Sources** (backup options)
+4. **Manual Search** (online fallback links)
 
-### **Smart Search Enhancements**
+### **Smart Artist Browsing**
+- **Popularity-Based Organization** - Top tracks always appear first
+- **Chronological New Releases** - Latest albums and singles prioritized
+- **Rich Visual Context** - Album artwork and release information
+- **Comprehensive Coverage** - Both mainstream hits and latest releases
+
+### **Enhanced Search Experience**
 - Real-time autocomplete with rich metadata
-- Artist discography exploration
-- Album and single browsing
-- Collaborative track detection
+- Artist discography exploration with smart organization
+- Album and single browsing with visual indicators
+- Collaborative track detection and deduplication
 
 ## 🆘 Troubleshooting
 
@@ -181,12 +174,14 @@ A powerful Raycast extension that allows you to search for and display song lyri
 - **No search results**: Try alternative spellings or include artist name
 - **Missing lyrics**: Some songs may not have lyrics available on any source
 - **Slow performance**: Check network connection; API rate limits may apply
-- **Tamil content**: Use movie names for better regional search results
+- **Artist not found**: Try searching by song first, then browse artist catalog
+- **Limited top tracks**: Spotify API provides up to 10 top tracks maximum
 
 ### **Debug Information**
 - Check Raycast console for detailed search logs
 - Spotify authentication status logged on each search
 - Source fallback progression shown in development mode
+- Track categorization (top tracks vs new releases) logged during artist browsing
 
 ## 📄 License
 
