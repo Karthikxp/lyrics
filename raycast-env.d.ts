@@ -7,7 +7,14 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-type ExtensionPreferences = {}
+type ExtensionPreferences = {
+  /** Genius API Key - Get your API key from https://genius.com/api-clients */
+  "geniusApiKey"?: string,
+  /** Spotify Client ID - Get your credentials from https://developer.spotify.com/dashboard */
+  "spotifyClientId": string,
+  /** Spotify Client Secret - Get your credentials from https://developer.spotify.com/dashboard */
+  "spotifyClientSecret": string
+}
 
 /** Preferences accessible in all the extension's commands */
 declare type Preferences = ExtensionPreferences
