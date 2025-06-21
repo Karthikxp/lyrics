@@ -16,13 +16,13 @@
     "outDir": "./dist",
     "noImplicitAny": false,
     "noImplicitReturns": false,
-    "noImplicitThis": false
+    "noImplicitThis": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noEmit": false,
+    "checkJs": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
-  "ts-node": {
-    "compilerOptions": {
-      "allowJs": true
-    }
-  }
+  "compileOnSave": false
 } 

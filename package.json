@@ -19,6 +19,7 @@
   ],
   "dependencies": {
     "@raycast/api": "^1.83.2",
+    "@types/react-dom": "^18.3.7",
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
     "genius-lyrics": "^4.4.7",
@@ -27,7 +28,7 @@
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.11",
     "@types/node": "20.8.10",
-    "@types/react": "^17.0.87",
+    "@types/react": "^18.3.23",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "typescript": "^5.4.5"

@@ -467,41 +467,42 @@ export default function SearchLyrics() {
   }
 
   // Show the search/autocomplete view
-  const emptyView = searchMode === "artist" && !selectedArtist && artists.length === 0 && searchText.length < 2
-    ? React.createElement(List.EmptyView as any, {
-        icon: "👨‍🎤",
-        title: "Search for Artists",
-        description: "Type at least 2 characters to start searching for artists",
-      })
-    : searchMode === "artist" && !selectedArtist && artists.length === 0
+  const emptyView =
+    searchMode === "artist" && !selectedArtist && artists.length === 0 && searchText.length < 2
       ? React.createElement(List.EmptyView as any, {
           icon: "👨‍🎤",
-          title: "No Artists Found",
-          description: "No artists found. Try a different search term.",
+          title: "Search for Artists",
+          description: "Type at least 2 characters to start searching for artists",
         })
-      : searchMode === "artist" && selectedArtist && songs.length === 0
+      : searchMode === "artist" && !selectedArtist && artists.length === 0
         ? React.createElement(List.EmptyView as any, {
-            icon: "🎵",
-            title: `${selectedArtist.name}'s Songs`,
-            description: "Loading songs...",
+            icon: "👨‍🎤",
+            title: "No Artists Found",
+            description: "No artists found. Try a different search term.",
           })
-        : searchMode === "song" && songs.length === 0 && searchText.length < 2
+        : searchMode === "artist" && selectedArtist && songs.length === 0
           ? React.createElement(List.EmptyView as any, {
               icon: "🎵",
-              title: "Search for Song Lyrics",
-              description: "Type at least 2 characters to start searching for songs",
+              title: `${selectedArtist.name}'s Songs`,
+              description: "Loading songs...",
             })
-          : React.createElement(List.EmptyView as any, {
-              icon: searchMode === "song" ? "🎵" : "👨‍🎤",
-              title: "No Songs Found",
-              description:
-                searchMode === "song"
-                  ? "No songs found. Try a different search term."
-                  : "No songs found for this artist.",
-            });
+          : searchMode === "song" && songs.length === 0 && searchText.length < 2
+            ? React.createElement(List.EmptyView as any, {
+                icon: "🎵",
+                title: "Search for Song Lyrics",
+                description: "Type at least 2 characters to start searching for songs",
+              })
+            : React.createElement(List.EmptyView as any, {
+                icon: searchMode === "song" ? "🎵" : "👨‍🎤",
+                title: "No Songs Found",
+                description:
+                  searchMode === "song"
+                    ? "No songs found. Try a different search term."
+                    : "No songs found for this artist.",
+              });
 
   const children = [];
-  
+
   // Add empty view if needed
   if (
     (searchMode === "artist" && !selectedArtist && artists.length === 0) ||
@@ -532,9 +533,7 @@ export default function SearchLyrics() {
           subtitle: subtitle.length > 0 ? subtitle.join(" • ") : "Artist",
           icon: artist.thumbnail || "👨‍🎤",
           accessories: [
-            ...(artist.followers
-              ? [{ text: `${(artist.followers / 1000000).toFixed(1)}M` }]
-              : []),
+            ...(artist.followers ? [{ text: `${(artist.followers / 1000000).toFixed(1)}M` }] : []),
           ],
           actions: React.createElement(
             ActionPanel as any,
@@ -575,7 +574,7 @@ export default function SearchLyrics() {
       React.createElement(Action, {
         title: "View Lyrics",
         onAction: () => setSelectedSong(song),
-      })
+      }),
     ];
 
     if (selectedArtist) {
