@@ -894,7 +894,7 @@ function cleanGeniusLyrics(rawLyrics: string): string {
   cleaned = cleaned.replace(/^\d+\s+Contributors?/i, "");
 
   // Remove translations list (languages like Türkçe, Português, etc.)
-  cleaned = cleaned.replace(/Translations?[^\[]+/i, "");
+  cleaned = cleaned.replace(/Translations?[^[]+/i, "");
 
   // Remove song description/annotation that appears before lyrics
   // This typically starts with quotes and ends with "Read More" or similar
@@ -912,11 +912,11 @@ function cleanGeniusLyrics(rawLyrics: string): string {
 
   // Clean up extra whitespace and normalize line breaks
   cleaned = cleaned
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n") // Max 2 consecutive newlines
     .trim();
 
   return cleaned;
